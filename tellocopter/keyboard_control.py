@@ -1,35 +1,21 @@
 from djitellopy import Tello
-from pynput import keyboard
-from pynput.keyboard import Key
+# from pynput import keyboard
+# from pynput.keyboard import Key
+import keyboard
 
 import os
 
+gain = 100
 
-
-class KeyboardController:
-    """Class used to control Tello drone using keyboard input.
-    Multiple keys pressed simultaneously is supported.
-    """
-
+class KeyboardController2:
     def __init__(self, tello: Tello):
         self.tello = tello
 
-        self.val = 100
-
-        self.listener = keyboard.Listener(on_press=self.on_press, on_release=self.on_release)
-        self.listener.start()
-        self.current_pressed = set()
-
-        self.fly_keys = [
-            'w',
-            'a',
-            's',
-            'd',
-            'q',
-            'e',
-            Key.space,
-            Key.ctrl
-        ]
+        # flags
+        self.c_pressed = False
+        self.t_pressed = False
+        self.l_pressed = False
+        self.p_pressed = False
 
         # velocity command values for roll, pitch, yaw
         # value interval <-100, 100>
@@ -40,112 +26,84 @@ class KeyboardController:
 
         self.bat = -1
 
+        # Tello roll/pitch/yaw flying control
+        keyboard.on_press_key('w', lambda e: self.set_pitch(gain))
+        keyboard.on_press_key('s', lambda e: self.set_pitch(-gain))
+        keyboard.on_press_key('d', lambda e: self.set_roll(gain))
+        keyboard.on_press_key('a', lambda e: self.set_roll(-gain))
+        keyboard.on_press_key('e', lambda e: self.set_yaw(gain))
+        keyboard.on_press_key('q', lambda e: self.set_yaw(-gain))
+        keyboard.on_press_key('space', lambda e: self.set_throttle(gain))
+        keyboard.on_press_key('ctrl', lambda e: self.set_throttle(-gain))
 
-    def on_press(self, key):
-        """Function handling pressing keys.
-        When mapped key is pressed, defined command is executed.
-        """
+        keyboard.on_release_key('w', lambda e: self.set_pitch(0))
+        keyboard.on_release_key('s', lambda e: self.set_pitch(0))
+        keyboard.on_release_key('d', lambda e: self.set_roll(0))
+        keyboard.on_release_key('a', lambda e: self.set_roll(0))
+        keyboard.on_release_key('e', lambda e: self.set_yaw(0))
+        keyboard.on_release_key('q', lambda e: self.set_yaw(0))
+        keyboard.on_release_key('space', lambda e: self.set_throttle(0))
+        keyboard.on_release_key('ctrl', lambda e: self.set_throttle(0))
 
-        if key not in self.current_pressed:
-            self.current_pressed.add(key)
-
-        for k in self.current_pressed:
-            try:
-                # connect
-                if k.char == 'c':
-                    self.tello.connect()
-
-                if k.char == 'p':
-                    os.system('cls')
-
-                # # takeoff/land
-                # if k.char == 't':
-                #     self.tello.takeoff()
-                # if k.char == 'l':
-                #     self.tello.land()
-                #     self.vel_roll = 0
-                #     self.vel_pitch = 0
-                #     self.vel_yaw = 0
-                #     self.vel_throttle = 0
-
-                #     self.tello.send_rc_control(self.vel_roll, self.vel_pitch, self.vel_throttle, self.vel_yaw)
-                    
-
-                # roll/pitch/yaw/up/down
-                if k.char in self.fly_keys:
-                    if k.char == 'w':
-                        self.vel_pitch = self.val
-                    if k.char == 's':
-                        self.vel_pitch = -self.val
-                    if k.char == 'a':
-                        self.vel_roll = -self.val
-                    if k.char == 'd':
-                        self.vel_roll = self.val
-                    if k.char == 'e':
-                        self.vel_yaw = self.val
-                    if k.char == 'q':
-                        self.vel_yaw = -self.val
-                    if k.char == Key.space:
-                        self.vel_throttle = self.val
-                    if k.char == Key.ctrl:
-                        self.vel_throttle = -self.val
-                    self.tello.send_rc_control(self.vel_roll, self.vel_pitch, self.vel_throttle, self.vel_yaw)
-                    
-            except AttributeError:
-                pass
-                
-
-        
+        # Tello other control
+        keyboard.on_press_key('c', lambda e: self.tello_connect())
+        keyboard.on_press_key('t', lambda e: self.tello_takeoff())
+        keyboard.on_press_key('l', lambda e: self.tello_land())
+        keyboard.on_press_key('p', lambda e: self.tello_emergency())
 
 
-    def on_release(self, key):
-        """Function handling releasing keys.
-        When mapped key is released, defined command is executed.
-        Mainly functions as setting values to their default value, when key is released.
-        """
+        keyboard.on_release_key('c', lambda e: self.tello_connect_release())
+        keyboard.on_release_key('t', lambda e: self.tello_takeoff_release())
+        keyboard.on_release_key('l', lambda e: self.tello_land_release())
+        keyboard.on_release_key('p', lambda e: self.tello_emergency_release())
 
-        if key in self.current_pressed:
-            self.current_pressed.remove(key)
 
-        
-        try:
-            # takeoff/land
-            if key.char == 'o':
-                self.tello.emergency()
-            if key.char == 'b':
-                self.bat = self.tello.get_battery()
-                print(self.bat)
-            if key.char == 't':
-                self.tello.takeoff()
-            if key.char == 'l':
-                try:
-                    self.tello.land()
-                except Exception as e:
-                    print(f"Failed to send land command: {e}")
 
-                self.vel_roll = 0
-                self.vel_pitch = 0
-                self.vel_yaw = 0
-                self.vel_throttle = 0
+    def set_roll(self, value):
+        self.vel_roll = value
+        self.tello.send_rc_control(self.vel_roll, self.vel_pitch, self.vel_throttle, self.vel_yaw)
 
-            # roll/pitch/yaw/up/down
-            if key.char in self.fly_keys:
-                if key.char == 'w':
-                    self.vel_pitch = 0
-                if key.char == 's':
-                    self.vel_pitch = 0
-                if key.char == 'a':
-                    self.vel_roll = 0
-                if key.char == 'd':
-                    self.vel_roll = 0
-                if key.char == 'e':
-                    self.vel_yaw = 0
-                if key.char == 'q':
-                    self.vel_yaw = 0
-                if key.char == Key.space:
-                    self.vel_throttle = 0
-                if key.char == Key.ctrl:
-                    self.vel_throttle = 0
-                self.tello.send_rc_control(self.vel_roll, self.vel_pitch, self.vel_throttle, self.vel_yaw)
-        except AttributeError:
-            pass
+    def set_pitch(self, value):
+        self.vel_pitch = value
+        self.tello.send_rc_control(self.vel_roll, self.vel_pitch, self.vel_throttle, self.vel_yaw)
+
+    def set_yaw(self, value):
+        self.vel_yaw = value
+        self.tello.send_rc_control(self.vel_roll, self.vel_pitch, self.vel_throttle, self.vel_yaw)
+
+    def set_throttle(self, value):
+        self.vel_throttle = value
+        self.tello.send_rc_control(self.vel_roll, self.vel_pitch, self.vel_throttle, self.vel_yaw)
+
+    def tello_connect(self):
+        if not self.c_pressed:
+            self.c_pressed = True
+            self.tello.connect()
+            
+    def tello_connect_release(self):
+        self.c_pressed = False
+
+    def tello_takeoff(self):
+        if not self.t_pressed:
+            self.t_pressed = True
+            self.tello.takeoff()
+
+    def tello_takeoff_release(self):
+        self.t_pressed = False
+
+    def tello_land(self):
+        if not self.l_pressed:
+            self.l_pressed = True
+            self.tello.land()
+
+    def tello_land_release(self):
+        self.l_pressed = False
+
+    def tello_emergency(self):
+        if not self.p_pressed:
+            self.p_pressed = True
+            self.tello.emergency()
+
+    def tello_emergency_release(self):
+        self.p_pressed = False
+
