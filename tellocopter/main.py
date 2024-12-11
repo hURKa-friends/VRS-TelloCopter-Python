@@ -6,7 +6,7 @@ from keyboard_control import KeyboardController2
 
 # constants defines
 C_OFF = ''
-C_SENSOR = 'control'
+C_SENSOR = 'NONE'
 
 
 class USART_Reader:
@@ -15,11 +15,11 @@ class USART_Reader:
         
         self.port = port
 
-        self.command = 0
         self.command_val = ''
         self.vel_roll = 0
         self.vel_pitch = 0
         self.vel_yaw = 0
+        self.vel_throttle = 0
 
         self.usart = serial.Serial(
             port=self.port,
@@ -34,16 +34,15 @@ class USART_Reader:
 
 
     def process_and_send_command(self):
-        if self.usart.in_waiting > 0:
+        # if self.usart.in_waiting > 0:
 
-            if self.command == C_OFF:
-                pass
-            elif self.command == C_SENSOR:    # default state, send commands from sensor
-                self.tello.send_rc_control(self.vel_roll, self.vel_pitch, self.vel_throttle, self.vel_yaw)
-            else:
-                pass
+        if self.command_val == C_OFF:
+            pass
+        elif self.command_val == C_SENSOR:    # default state, send commands from sensor
+            self.tello.send_rc_control(self.vel_roll, self.vel_pitch, self.vel_throttle, self.vel_yaw)
         else:
-            print("No data from USART to process")
+            pass
+
         
 
     def read_data(self):
@@ -51,13 +50,13 @@ class USART_Reader:
             csv_data = self.usart.readline().decode('utf-8').strip()
 
             split_data = csv_data.split(',')
-            print(split_data[0], split_data[1], split_data[2], split_data[3])
+            # print(split_data[0], split_data[1], split_data[2], split_data[3])
 
-            self.command_val = csv_data[0]
-            self.vel_roll = csv_data[1]
-            self.vel_pitch = csv_data[2]
-            self.vel_yaw = csv_data[3]
-
+            self.command_val = split_data[0]
+            self.vel_roll = int(split_data[1])
+            self.vel_pitch = int(split_data[2])
+            # self.vel_yaw = int(split_data[3])
+            self.vel_yaw = 0
 
 def main(args=None):
 

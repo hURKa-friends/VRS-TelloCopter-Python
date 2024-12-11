@@ -123,6 +123,12 @@ class KeyboardController2:
             self.in_sensor_control = not self.in_sensor_control
             print("sensor control is ", self.in_sensor_control)
 
+            self.vel_roll = 0
+            self.vel_pitch = 0
+            self.vel_yaw = 0
+            self.vel_throttle = 0
+            self.tello.send_rc_control(self.vel_roll, self.vel_pitch, self.vel_throttle, self.vel_yaw)
+
     def board_lock_unlock_release(self):
         self.r_pressed = False
 
