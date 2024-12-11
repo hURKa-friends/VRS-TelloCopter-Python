@@ -16,6 +16,8 @@ class KeyboardController2:
         self.t_pressed = False
         self.l_pressed = False
         self.p_pressed = False
+        self.b_pressed = False
+        self.r_pressed = False
 
         # velocity command values for roll, pitch, yaw
         # value interval <-100, 100>
@@ -25,6 +27,8 @@ class KeyboardController2:
         self.vel_throttle = 0
 
         self.bat = -1
+
+        self.in_sensor_control = False
 
         # Tello roll/pitch/yaw flying control
         keyboard.on_press_key('w', lambda e: self.set_pitch(gain))
@@ -50,24 +54,30 @@ class KeyboardController2:
         keyboard.on_press_key('t', lambda e: self.tello_takeoff())
         keyboard.on_press_key('l', lambda e: self.tello_land())
         keyboard.on_press_key('p', lambda e: self.tello_emergency())
+        keyboard.on_press_key('r', lambda e: self.board_lock_unlock())
+        keyboard.on_press_key('b', lambda e: self.read_battery())
 
 
         keyboard.on_release_key('c', lambda e: self.tello_connect_release())
         keyboard.on_release_key('t', lambda e: self.tello_takeoff_release())
         keyboard.on_release_key('l', lambda e: self.tello_land_release())
         keyboard.on_release_key('p', lambda e: self.tello_emergency_release())
-
+        keyboard.on_release_key('r', lambda e: self.board_lock_unlock_release())
+        keyboard.on_release_key('b', lambda e: self.read_battery_release())
 
 
     def set_roll(self, value):
+        self.in_sensor_control = False
         self.vel_roll = value
         self.tello.send_rc_control(self.vel_roll, self.vel_pitch, self.vel_throttle, self.vel_yaw)
 
     def set_pitch(self, value):
+        self.in_sensor_control = False
         self.vel_pitch = value
         self.tello.send_rc_control(self.vel_roll, self.vel_pitch, self.vel_throttle, self.vel_yaw)
 
     def set_yaw(self, value):
+        self.in_sensor_control = False
         self.vel_yaw = value
         self.tello.send_rc_control(self.vel_roll, self.vel_pitch, self.vel_throttle, self.vel_yaw)
 
@@ -107,3 +117,19 @@ class KeyboardController2:
     def tello_emergency_release(self):
         self.p_pressed = False
 
+    def board_lock_unlock(self):
+        if not self.b_pressed:
+            self.r_pressed = True
+            self.in_sensor_control = not self.in_sensor_control
+            print("sensor control is ", self.in_sensor_control)
+
+    def board_lock_unlock_release(self):
+        self.r_pressed = False
+
+    def read_battery(self):
+        if not self.b_pressed:
+            self.b_pressed = True
+            print(self.tello.get_battery())
+
+    def read_battery_release(self):
+        self.b_pressed = False
